@@ -66,3 +66,23 @@ exports.login = async(req,res) => {
         res.status(400).json({message: "Email tidak terdaftar"})
     }
 }
+
+exports.logout = async(req,res) => {
+    // ambil token di browser 
+    const refreshToken = req.cookies.refreshToken
+    if(!refreshToken) return res.sendStatus(204)
+    // cari user berdasarkan token
+    const user = await Users.findOne({
+        where:{
+            refresh_token: refreshToken
+        }
+    })
+    if(!user) return res.sendStatus(204)
+    await Users.update({refresh_token: null}, {
+        where:{
+            id: user.id
+        }
+    })
+    res.clearCookie('refreshToken')
+    return res.sendStatus(200)
+}
