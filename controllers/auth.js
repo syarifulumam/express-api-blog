@@ -32,3 +32,37 @@ exports.register = async(req,res) => {
         res.status(400).json({message: error.message})
     }
 }
+
+exports.login = async(req,res) => {
+    try {
+        const user = await Users.findOne({
+            where:{
+                email: req.body.email
+            }
+        })
+        // Cek Password 
+        const match = await bcrypt.compare(req.body.password, user.password)
+        if(!match) return res.status(400).json({message: "Password salah"})
+        
+        // buat token
+        const {id,name,email,...other} = user
+        const accessToken = jwt.sign({id,name,email}, process.env.ACCESS_TOKEN_SECRET,{
+            expiresIn: '20s'
+        })
+        const refreshToken = jwt.sign({id,name,email}, process.env.REFRESH_TOKEN_SECRET,{
+            expiresIn: '1d'
+        })
+        await Users.update({refresh_token: refreshToken},{
+            where:{
+                id: id
+            }
+        })
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            maxAge: 24 * 60 * 60 * 1000
+        })
+        res.json({accessToken})
+    } catch (error) {
+        res.status(400).json({message: "Email tidak terdaftar"})
+    }
+}
